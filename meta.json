@@ -1,14 +1,14 @@
 {
   "$schema": "https://dl.viam.dev/module.schema.json",
   "module_id": "jad:mock-module",
-  "visibility": "private",
-  "url": "",
-  "description": "Modular sensor component: mock-module",
+  "visibility": "public",
+  "url": "https://github.com/jadnehme/mock-module/",
+  "description": "module that returns a ordered set of values to emulate a sensor with test data",
   "models": [
     {
       "api": "rdk:component:sensor",
       "model": "jad:mock-module:mock-module",
-      "short_description": "Provide a short (100 characters or less) description of this model here",
+      "short_description": "This sensor emulates other sensors by returning values for a list of predefined keys",
       "markdown_link": "README.md#model-jadmock-modulemock-module"
     }
   ],
