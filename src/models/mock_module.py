@@ -52,11 +52,9 @@ class MockModule(Sensor, EasyResource):
         return super().new(config, dependencies)
 
     @classmethod
-    #mock-module will work with different options. Validate_config checks that at least one of them is set.
-    # the most common use case is to have a static list of reading values. One of which will be returned.
-    # the second option (to be implemented) is to get a MQL or SQL and return one of the values from the query.
-    # implementation will iterate through the values.
-    # large config may break so an external config file may be needed. To be determined during testing.
+    #mock-module will work with different options. Validate_config checks that the option of having  
+    # of having a static list of values to return is correrctly set. This list will be use in the second
+    # second option as well to get a MQL return one of the values from the query.
     def validate_config(
         cls, config: ComponentConfig
     ) -> Tuple[Sequence[str], Sequence[str]]:
@@ -71,34 +69,28 @@ class MockModule(Sensor, EasyResource):
                 first element is a list of required dependencies and the
                 second element is a list of optional dependencies
         """
-        
+
+      # Check there is the "readings" attributes. No need to check other options as we will use the reading attribute
+      # in case of problem with them such as empty result set.
         if not MockModule.READINGS_ATTRIBUTE in config.attributes.fields:
             raise Exception("Missing required attribute 'readings' in config for mock-module")
         
-        # we check two things: that there is a readings attribute. And that this one does not contain nested JSONs or nested lists.
+        # we check validity of Readings by making sure And that it does not contain nested JSONs or nested lists.
         config_reading_attr = config.attributes.fields[MockModule.READINGS_ATTRIBUTE]
         if config_reading_attr.HasField("struct_value"):
             for field_name, field_value in config_reading_attr.struct_value.fields.items(): 
                 if not field_value.HasField("bool_value") and not field_value.HasField("string_value") and not field_value.HasField("number_value") and not field_value.HasField("list_value"):
                     raise Exception("found unsupported value within config. Only string, number, bools and lists are supported ")
-                    if field_value.HasField("list_value"):
-                        for field_value_item in field_value.list_value.values():
-                            if not field_value.HasField("bool_value") and not field_value.HasField("string_value") and not field_value.HasField("number_value"):
-                                raise Exception("found unsupported value within config list of values. Only string, number, bools are supported ")
+                if field_value.HasField("list_value"):
+                    for field_value_item in field_value.list_value.values():
+                        if not field_value.HasField("bool_value") and not field_value.HasField("string_value") and not field_value.HasField("number_value"):
+                            raise Exception("found unsupported value within config list of values. Only string, number, bools are supported ")
 
 
  
         return [], []
 
 
-    '''
-    this to do if this module is useful:
-    - change the login to use machine's one. Rely on the destination to give access.
-    - put a limit on the number of items obtained for the cache. Then iterate through them as we get new ones.
-    - check dangers of mql injection and protect against it.
-    - expire cache when we get to the end if we want to get new items.
-    - we could support nested json for static returns 
-    '''
     def reconfigure(
         self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
     ):
@@ -119,8 +111,8 @@ class MockModule(Sensor, EasyResource):
         self.cache = None # the cached db query result. None means not set. [] means empty result set for the cache
         self.match = None # Predicate of the query. None means not set. Empty means: return everything
         self.project = {} # MLQ $project. Created from the reading config.
-        self.api_key = os.getenv("VIAM_API_KEY")  # optional config entry to query DB. Try to read it from the environment first
-        self.api_key_id = os.getenv("VIAM_API_KEY_ID")  # optional config entry to query DB. Try to read it from the environment first
+        self.api_key = os.getenv("VIAM_API_KEY")  # optional config entry to query DB. Try to read it from the environment first. Can be overridden in config
+        self.api_key_id = os.getenv("VIAM_API_KEY_ID")  # optional config entry to query DB. Try to read it from the environment first. Can be overridden in congif.
 
 
         # buffer to store the set of possible values for each fieldname
@@ -128,7 +120,6 @@ class MockModule(Sensor, EasyResource):
 
         if reading_config.HasField("struct_value"):
 
-            # to do: make this recursive so that we support any JSON
             # go through every parameter and populate the list of possible values in an array.
             for field_name, field_value in reading_config.struct_value.fields.items(): 
                 values = [] # don't forget to re-initialize it for each attribute
@@ -181,7 +172,7 @@ class MockModule(Sensor, EasyResource):
             self.reading[None] = values
 
         
-        # if there is a query parameters specified in the config we save the match and the porject
+        # if there is a query parameters specified in the config we save the match as well as the project
         # this was useful as the number of parameters started to break the JSON config
         if MockModule.QUERY_ATTRIBUTE in config.attributes.fields:
             query = config.attributes.fields[MockModule.QUERY_ATTRIBUTE]
@@ -215,12 +206,11 @@ class MockModule(Sensor, EasyResource):
         result_size = 0
 
         # putting the first query in here rather than the reconfig to control the cache
-        # this way we can refresh it when we get to the end to get latest elements, 
+        # this way we can refresh it, update it when we get to the end to get latest elements, 
         # or take chunks at a time etc.
         if self.cache == None:
             viam_client = None
             self.cache = [] # set it to empty as default, in case there's an issue connecting.
-            ## really should hide these/take them from the config or at best use our authentication/permissioning.
             dial_options = DialOptions(
                 credentials=Credentials(
                     type="api-key",
@@ -258,7 +248,7 @@ class MockModule(Sensor, EasyResource):
                 if viam_client is not None:
                     viam_client.close()
                 else:
-                    self.logger.info("in mock_module.get_readings, viam_client was null at exit, could not close it")
+                    self.logger.info("in mock_module.get_readings, error during viam_client creation which was was null at exit. Could not close it")
 
 
         if not self.cache == None and not self.cache == []:
@@ -271,11 +261,8 @@ class MockModule(Sensor, EasyResource):
             for field_name, values in self.reading.items():            
                 result_dict[field_name] = values[self.counter % len(values)]
 
+        # Get the next value for iteration.
         self.counter += 1
-
-
-
-            
 
         return result_dict
         
