@@ -16,7 +16,6 @@ from viam.utils import struct_to_dict, message_to_struct
 import bson
 from viam.rpc.dial import DialOptions, Credentials
 from viam.app.viam_client import ViamClient
-import json
 import os
 
 
@@ -82,8 +81,8 @@ class MockModule(Sensor, EasyResource):
                 if not field_value.HasField("bool_value") and not field_value.HasField("string_value") and not field_value.HasField("number_value") and not field_value.HasField("list_value"):
                     raise Exception("found unsupported value within config. Only string, number, bools and lists are supported ")
                 if field_value.HasField("list_value"):
-                    for field_value_item in field_value.list_value.values():
-                        if not field_value.HasField("bool_value") and not field_value.HasField("string_value") and not field_value.HasField("number_value"):
+                    for field_value_item in field_value.list_value.values:
+                        if not field_value_item.HasField("bool_value") and not field_value_item.HasField("string_value") and not field_value_item.HasField("number_value"):
                             raise Exception("found unsupported value within config list of values. Only string, number, bools are supported ")
 
 
