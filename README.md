@@ -68,3 +68,11 @@ Only the readings part is required. If using query, readings will be used to get
   }
 }
 ```
+#### Future work
+If this module is useful the following will be done:
+1. Support reading from a local file instead of DB.
+2. When reaching the end of the cache, update it with latest values. Keep iterating from the same place.
+3. A more general solution to 1. : put a limit on the number of items obtained for the cache in one time to protect againts large memory/long queries. Then get the next chunk when we reach the end.
+4. Restrict limit MQL match further 
+5. Add/check support for some easy and frequent match such as time limitation.
+
